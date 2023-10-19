@@ -1,0 +1,37 @@
+FROM debian:12
+
+RUN apt-get update \
+  && apt-get install -y ca-certificates \
+    file \
+    git \
+    subversion \
+    python3 \
+    python3-distutils \
+    build-essential \
+    gawk \
+    unzip \
+    libncurses5-dev \
+    zlib1g-dev \
+    libssl-dev \
+    libelf-dev \
+    wget \
+    rsync \
+    time \
+    qemu-utils \
+    ecdsautils \
+    lua-check \
+    shellcheck \
+    jq \
+    rsync \
+  && apt-get clean
+
+RUN id ; echo build.container >/etc/hostname
+# gluon build fails when running as root
+RUN adduser --quiet --disabled-login --gecos '' ffgt
+USER ffgt:ffgt
+# workaround for fatal: detected dubious ownership in repository at '/builds/firmware/site-ffs'
+# https://gitlab.com/gitlab-org/gitlab-runner/-/issues/29022
+RUN git config --global --add safe.directory '*'
+RUN git config --global user.email "technik@guetersloh.freifunk.net" 
+RUN git config --global user.name "FFGT Admins" 
+RUN mkdir /home/ffgt/build
