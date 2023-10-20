@@ -92,7 +92,7 @@ cd site-ffgt
 make gluon-prepare output-clean 2>&1 | tee make-prepare.log
 
 if [ ! -e gluon-build/site ]; then
-  ln -s $(pwd) gluon-build/site
+  ln -s ../../site-ffgt gluon-build/site
 fi
 
 if [ ! -d build_tmp ]; then
@@ -128,6 +128,7 @@ EOF
   chmod +x docker-build.sh
   INDOCKERPATH=$(pwd | sed -e s%${MYBUILDROOT}%/gluon%g)
 
+  echo "Starting Docker based build for ${target} ..."
   date +%s >lastbuildstart;
   docker run -it --hostname gluon.docker --rm -u "$(id -u):$(id -g)" --volume="${MYBUILDROOT}:/gluon" -e HOME=/gluon ${DOCKERIMAGE} ${INDOCKERPATH}/docker-build.sh
   RC=$?
@@ -137,6 +138,7 @@ EOF
     echo "Error running build of $target in docker, RC $RC." | tee -a make.log
     exit $RC
   fi
+  lfdtgtnr=$(expr ${lfdtgtnr} + 1)
 done
 
 FFGTPKGCOMMIT="$(cd gluon-build/openwrt/feeds/ffgt; git rev-parse HEAD)"
