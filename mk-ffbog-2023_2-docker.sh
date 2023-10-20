@@ -123,7 +123,7 @@ do
 cd $(pwd | sed -e s%${MYBUILDROOT}%/gluon%g)/gluon-build
 
 . ../docker-build-env
-make GLUON_TARGET=${target} 2>&1 | tee ../build_${target}.log
+make -j ${JOBS} V=sc GLUON_TARGET=${target} 2>&1 | tee ../build_${target}.log
 EOF
   chmod +x docker-build.sh
   INDOCKERPATH=$(pwd | sed -e s%${MYBUILDROOT}%/gluon%g)
