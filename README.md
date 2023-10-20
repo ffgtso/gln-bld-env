@@ -8,4 +8,4 @@ Example:
     $ cd ..
     $ vi mk-ffbog-2023_2-docker.sh # edit MYBUILDDIR, MYBUILDSITEREPO, DOCKERIMAGE
     $ cd ..
-    $ time ./mk-ffbog-2023_2-docker.sh
+    $ time gln-bld-env/mk-ffbog-2023_2-docker.sh
