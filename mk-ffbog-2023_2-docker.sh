@@ -91,8 +91,8 @@ cd site-ffgt
 # Prepare stuff, run actual compile in Docker container later.
 make gluon-prepare output-clean 2>&1 | tee make-prepare.log
 
-if [ ! -e site ]; then
-  ln -s $(pwd) site
+if [ ! -e gluon-build/site ]; then
+  ln -s $(pwd) gluon-build/site
 fi
 
 if [ ! -d build_tmp ]; then
