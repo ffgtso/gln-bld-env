@@ -122,7 +122,7 @@ do
 
 cd $(pwd | sed -e s%${MYBUILDROOT}%/gluon%g)/gluon-build
 
-. docker-build-env
+. ../docker-build-env
 make GLUON_TARGET=${target} 2>&1 | tee ../build_${target}.log
 EOF
   chmod +x docker-build.sh
