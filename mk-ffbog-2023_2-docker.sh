@@ -30,6 +30,7 @@ else
 	exit $RC
     fi
 fi
+
 BASEPATH="$(pwd)"
 
 if [ -d ffgt_packages-v2020.1 ]; then
