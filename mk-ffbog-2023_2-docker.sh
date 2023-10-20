@@ -110,6 +110,9 @@ EOF
 
 echo "1" >lfdtgtnr
 
+# FIXME, reduce to 1 target due to the fucking Gluon/OpenWrt build errors ...
+echo "ath79-generic" > build-targets.list
+
 if [ ! -e build-targets.list ]; then
   echo "$0: missing my build-targets.list, aborting."
   exit 1
