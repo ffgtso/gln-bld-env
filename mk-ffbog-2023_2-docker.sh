@@ -86,10 +86,16 @@ export SOURCE_DATE_EPOCH="${STARTTIME}"
 export GLUON_RELEASE="${RELEASE}"
 
 cd site-ffgt
-echo "1" >lfdtgtnr
+
+# Prepare stuff, run actual compile in Docker container later.
+make gluon-prepare output-clean 2>&1 | tee make-prepare.log
+
+if [ ! -e site ]; then
+  ln -s $(pwd) site
+fi
 
 if [ ! -d build_tmp ]; then
-    mkdir build_tmp
+  mkdir build_tmp
 fi
 
 cat <<EOF >docker-build-env
@@ -101,29 +107,36 @@ export GLUON_LANGS="de en"
 export JOBS=${USEnCORES}
 EOF
 
-cat <<EOF >docker-build.sh
-#!/bin/bash
+echo "1" >lfdtgtnr
 
-cd $(pwd | sed -e s%${MYBUILDROOT}%/gluon%g)
-
-. docker-build-env
-make manifest 2>&1 | tee make.log
-EOF
-chmod +x docker-build.sh
-
-INDOCKERPATH=$(pwd | sed -e s%${MYBUILDROOT}%/gluon%g)
-
-# docker run -it --hostname build.container --mount type=bind,source=${MYBUILDROOT},target=${MYBUILDROOT} 591ce42538ff $(pwd)/docker-build.sh
-# docker run -it --hostname gluon.docker --mount type=bind,source=${MYBUILDROOT},target=/gluon 29e36f519208 ${INDOCKERPATH}/docker-build.sh
-
-docker run -it --hostname gluon.docker --rm -u "$(id -u):$(id -g)" --volume="${MYBUILDROOT}:/gluon" -e HOME=/gluon ${DOCKERIMAGE} ${INDOCKERPATH}/docker-build.sh
-RC=$?
-
-if [ $RC -ne 0 ]; then
-  echo "Error running build in docker, RC $RC." | tee -a make.log
-  exit $RC
+if [ ! -e build-targets.list ]; then
+  echo "$0: missing my build-targets.list, aborting."
+  exit 1
 fi
 
+for target in $(cat build-targets.list)
+do
+  cat <<EOF >docker-build.sh
+#!/bin/bash
+
+cd $(pwd | sed -e s%${MYBUILDROOT}%/gluon%g)/gluon-build
+
+. docker-build-env
+make GLUON_TARGET=${target} 2>&1 | tee ../build_${target}.log
+EOF
+  chmod +x docker-build.sh
+  INDOCKERPATH=$(pwd | sed -e s%${MYBUILDROOT}%/gluon%g)
+
+  date +%s >lastbuildstart;
+  docker run -it --hostname gluon.docker --rm -u "$(id -u):$(id -g)" --volume="${MYBUILDROOT}:/gluon" -e HOME=/gluon ${DOCKERIMAGE} ${INDOCKERPATH}/docker-build.sh
+  RC=$?
+  ./log_status.sh "$target" $RC
+
+  if [ $RC -ne 0 ]; then
+    echo "Error running build of $target in docker, RC $RC." | tee -a make.log
+    exit $RC
+  fi
+done
 
 FFGTPKGCOMMIT="$(cd gluon-build/openwrt/feeds/ffgt; git rev-parse HEAD)"
 FFGTSITECOMMIT="$(git rev-parse HEAD)"
