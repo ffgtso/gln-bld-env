@@ -88,10 +88,6 @@ export GLUON_RELEASE="${RELEASE}"
 
 cd site-ffgt
 
-if [ ! -e gluon-build/site ]; then
-  ln -s ../../site-ffgt gluon-build/site
-fi
-
 if [ ! -d build_tmp ]; then
   mkdir build_tmp
 fi
@@ -116,6 +112,10 @@ cd $(pwd | sed -e s%${MYBUILDROOT}%/gluon%g)
 make gluon-prepare output-clean 2>&1 | tee make-prepare.log
 EOF
 docker run -it --hostname gluon.docker --rm -u "$(id -u):$(id -g)" --volume="${MYBUILDROOT}:/gluon" -e HOME=/gluon ${DOCKERIMAGE} ${INDOCKERPATH}/docker-build.sh
+
+if [ ! -e gluon-build/site ]; then
+  ln -s ../../site-ffgt gluon-build/site
+fi
 
 echo "1" >lfdtgtnr
 
