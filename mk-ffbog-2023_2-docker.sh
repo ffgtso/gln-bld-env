@@ -88,9 +88,6 @@ export GLUON_RELEASE="${RELEASE}"
 
 cd site-ffgt
 
-# Prepare stuff, run actual compile in Docker container later.
-make gluon-prepare output-clean 2>&1 | tee make-prepare.log
-
 if [ ! -e gluon-build/site ]; then
   ln -s ../../site-ffgt gluon-build/site
 fi
@@ -107,6 +104,18 @@ export GLUON_AUTOUPDATER_ENABLED=1
 export GLUON_LANGS="de en"
 export JOBS=${USEnCORES}
 EOF
+
+INDOCKERPATH=$(pwd | sed -e s%${MYBUILDROOT}%/gluon%g)
+
+cat <<EOF >docker-build.sh
+#!/bin/bash
+
+cd $(pwd | sed -e s%${MYBUILDROOT}%/gluon%g)
+
+. ../docker-build-env
+make gluon-prepare output-clean 2>&1 | tee make-prepare.log
+EOF
+docker run -it --hostname gluon.docker --rm -u "$(id -u):$(id -g)" --volume="${MYBUILDROOT}:/gluon" -e HOME=/gluon ${DOCKERIMAGE} ${INDOCKERPATH}/docker-build.sh
 
 echo "1" >lfdtgtnr
 
@@ -129,7 +138,6 @@ cd $(pwd | sed -e s%${MYBUILDROOT}%/gluon%g)/gluon-build
 make -j ${JOBS} V=sc GLUON_TARGET=${target} 2>&1 | tee ../build_${target}.log
 EOF
   chmod +x docker-build.sh
-  INDOCKERPATH=$(pwd | sed -e s%${MYBUILDROOT}%/gluon%g)
 
   echo "Starting Docker based build for ${target} ..."
   date +%s >lastbuildstart;
