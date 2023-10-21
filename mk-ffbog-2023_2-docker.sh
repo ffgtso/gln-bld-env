@@ -111,6 +111,7 @@ cd $(pwd | sed -e s%${MYBUILDROOT}%/gluon%g)
 . docker-build-env
 make gluon-prepare output-clean 2>&1 | tee make-prepare.log
 EOF
+chmod +x docker-build.sh
 docker run -it --hostname gluon.docker --rm -u "$(id -u):$(id -g)" --volume="${MYBUILDROOT}:/gluon" -e HOME=/gluon ${DOCKERIMAGE} ${INDOCKERPATH}/docker-build.sh
 RC=$?
 if [ $RC -ne 0 ]; then
