@@ -112,7 +112,7 @@ cat <<EOF >docker-build.sh
 
 cd $(pwd | sed -e s%${MYBUILDROOT}%/gluon%g)
 
-. ../docker-build-env
+. docker-build-env
 make gluon-prepare output-clean 2>&1 | tee make-prepare.log
 EOF
 docker run -it --hostname gluon.docker --rm -u "$(id -u):$(id -g)" --volume="${MYBUILDROOT}:/gluon" -e HOME=/gluon ${DOCKERIMAGE} ${INDOCKERPATH}/docker-build.sh
