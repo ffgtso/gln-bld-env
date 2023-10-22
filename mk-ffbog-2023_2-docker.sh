@@ -124,7 +124,7 @@ cat <<EOF >docker-build.sh
 
 cd $(pwd | sed -e s%${MYBUILDROOT}%/gluon%g)
 
-. /gluon/docker-build-env
+. $(pwd | sed -e s%${MYBUILDROOT}%/gluon%g)/docker-build-env
 make gluon-prepare output-clean 2>&1 | tee make-prepare.log
 EOF
 chmod +x docker-build.sh
@@ -164,7 +164,7 @@ do
 
 cd $(pwd | sed -e s%${MYBUILDROOT}%/gluon%g)/gluon-build
 
-. /gluon/docker-build-env
+. $(pwd | sed -e s%${MYBUILDROOT}%/gluon%g)/docker-build-env
 make -j \${JOBS} V=sc GLUON_TARGET=${target} 2>&1 | tee ../build_${target}.log
 EOF
   chmod +x docker-build.sh
