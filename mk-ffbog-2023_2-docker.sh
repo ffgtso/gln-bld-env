@@ -1,7 +1,7 @@
 #!/bin/bash
 MYBUILDROOT=$(pwd)
 MYBUILDDIR=ffbog-v2023.1
-MYBUILDSITEREPO=site-ffbog-v2023.2.git
+MYBUILDSITEREPO=https://github.com/ffgtso/site-ffbog-v2023.2.git
 DOCKERIMAGE=gluon-docker:v2023.1
 
 if [ ! -d ${MYBUILDDIR} ]; then
@@ -14,28 +14,24 @@ if [ ! -d ${MYBUILDDIR} ]; then
     fi
 fi
 
-MYBUILDROOT=$(pwd)
-
 cd ${MYBUILDDIR}
-#test -e openwrt/version.date && rm openwrt/version.date
-if [ ! -d site-ffgt ]; then
-    git clone https://github.com/ffgtso/${MYBUILDSITEREPO} site-ffgt || exit 1
-else
-    (cd site-ffgt && git stash && git pull || exit 1)
-    RC=$?
-    if [ $RC -ne 0 ]; then
-        echo
-	echo "git pull failed, aborting."
-	echo
-	exit $RC
-    fi
+
+# Preparations ...
+# Prep counters for RELEASE number
+
+if [ ! -e baserelease.txt ]; then
+    echo "1.6.0~" >baserelease.txt
 fi
 
-BASEPATH="$(pwd)"
-
+if [ ! -e buildnumber.txt ]; then
+    echo "0" >buildnumber.txt
+fi
 if [ -d ffgt_packages-v2020.1 ]; then
     /bin/rm -rf ffgt_packages-v2020.1
 fi
+
+# Get our package repos's current commit — we build always our latest and greatest code ;)
+
 git clone https://github.com/wusel42/ffgt_packages-v2020.1.git || exit 1
 if [ -d ffgt_packages-v2020.1 ]; then
   PKGLIVECOMMIT="`(cd ffgt_packages-v2020.1; git rev-parse HEAD)`"
@@ -48,24 +44,34 @@ else
   exit 1
 fi
 
-if [ ! -e baserelease.txt ]; then
-    echo "1.6.0~" >baserelease.txt
+# Now clone or update the site repo used to/in site-ffgt
+
+if [ ! -d site-ffgt ]; then
+    git clone ${MYBUILDSITEREPO} site-ffgt || exit 1
+else
+    (cd site-ffgt && git stash && git pull || exit 1)
+    RC=$?
+    if [ $RC -ne 0 ]; then
+        echo
+	echo "git pull failed, aborting."
+	echo
+	exit $RC
+    fi
 fi
 
-if [ ! -e buildnumber.txt ]; then
-    echo "0" >buildnumber.txt
-fi
+# FIXME: BASEPATH==MYBUILDDIR, right?
+BASEPATH="$(pwd)"
+
+# Compute build environment
 
 MYBUILDNBR="`cat buildnumber.txt`"
 RELEASE="`cat baserelease.txt`${MYBUILDNBR}"
 
 export RELEASE
-export USEnCORES=64 #48 #20 #22 #1 #22
-export GLUON_RELEASE=${RELEASE}
+export GLUON_RELEASE="${RELEASE}"
 export GLUON_AUTOUPDATER_BRANCH=stable
 export GLUON_AUTOUPDATER_ENABLED=1
 export GLUON_LANGS="de en"
-
 export AVAILCORES="$(grep ^processor </proc/cpuinfo | wc -l)"
 export USEnCORES=$(expr ${AVAILCORES} \* 3)
 if [ -z "${USEnCORES}" ]; then
@@ -73,7 +79,10 @@ if [ -z "${USEnCORES}" ]; then
 fi
 export JOBS=${USEnCORES}
 
+# Build documentation
+
 export STARTTIME="$(date +%s)"
+export SOURCE_DATE_EPOCH="${STARTTIME}"
 
 echo "Build for ${RELEASE} started at $(date) on $(uname -n)." >/tmp/build-${RELEASE}.txt
 echo >>/tmp/build-${RELEASE}.txt
@@ -83,14 +92,17 @@ free -h >>/tmp/build-${RELEASE}.txt
 echo >>/tmp/build-${RELEASE}.txt
 cat /dev/null >/tmp/build-${RELEASE}.log
 
-export SOURCE_DATE_EPOCH="${STARTTIME}"
-export GLUON_RELEASE="${RELEASE}"
+# Enter site directory to prepare the build (download & patch Gluon)
 
 cd site-ffgt
+
+# Temporary files (logs) created during Docker runs
 
 if [ ! -d build_tmp ]; then
   mkdir build_tmp
 fi
+
+# Create a sourceable file with the environment variables
 
 cat <<EOF >docker-build-env
 export RELEASE=${RELEASE}
@@ -101,14 +113,18 @@ export GLUON_LANGS="de en"
 export JOBS=${USEnCORES}
 EOF
 
+# Docker builds in /gluon which is ${MYBUILDROOT}, so adjust paths ...
+
 INDOCKERPATH=$(pwd | sed -e s%${MYBUILDROOT}%/gluon%g)
+
+# Create Docker script to prepare our source tree (download & patch Gluon)
 
 cat <<EOF >docker-build.sh
 #!/bin/bash
 
 cd $(pwd | sed -e s%${MYBUILDROOT}%/gluon%g)
 
-. docker-build-env
+. /gluon/docker-build-env
 make gluon-prepare output-clean 2>&1 | tee make-prepare.log
 EOF
 chmod +x docker-build.sh
@@ -119,9 +135,13 @@ if [ $RC -ne 0 ]; then
   exit $RC
 fi
 
+# Link gluon-build/site to ${MYBUILDROOT}, relative from site-ffgt/gluon-build
+
 if [ ! -e gluon-build/site ]; then
   ln -s ../../site-ffgt gluon-build/site
 fi
+
+# We count the builds ...
 
 echo "1" >lfdtgtnr
 
@@ -133,6 +153,10 @@ if [ ! -e build-targets.list ]; then
   exit 1
 fi
 
+# The build loop: We maintain build-targets.list with all targets we are interessted in.
+# Each target is build within our Docker container, inside $(pwd)/gluon-build (with
+# $(pwd) being ${MYBUILDROOT}/site-ffgt), just as suppessted in Gluon's documentation.
+
 for target in $(cat build-targets.list)
 do
   cat <<EOF >docker-build.sh
@@ -140,8 +164,8 @@ do
 
 cd $(pwd | sed -e s%${MYBUILDROOT}%/gluon%g)/gluon-build
 
-. ../docker-build-env
-make -j ${JOBS} V=sc GLUON_TARGET=${target} 2>&1 | tee ../build_${target}.log
+. /gluon/docker-build-env
+make -j \${JOBS} V=sc GLUON_TARGET=${target} 2>&1 | tee ../build_${target}.log
 EOF
   chmod +x docker-build.sh
 
@@ -158,7 +182,9 @@ EOF
   lfdtgtnr=$(expr ${lfdtgtnr} + 1)
 done
 
-FFGTPKGCOMMIT="$(cd gluon-build/openwrt/feeds/ffgt; git rev-parse HEAD)"
+# After we've successfully build the stuff (did we?), notify & upload
+
+FFGTPKGCOMMIT="$(cd gluon-build/openwrt/feeds/ffgt 2>/dev/null; git rev-parse HEAD 2>/dev/null)"
 FFGTSITECOMMIT="$(git rev-parse HEAD)"
 GLUONBASECOMMIT="$(cd gluon-build ; git rev-parse HEAD)"
 
