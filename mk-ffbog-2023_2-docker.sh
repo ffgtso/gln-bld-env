@@ -35,7 +35,6 @@ fi
 git clone https://github.com/wusel42/ffgt_packages-v2020.1.git || exit 1
 if [ -d ffgt_packages-v2020.1 ]; then
   PKGLIVECOMMIT="`(cd ffgt_packages-v2020.1; git rev-parse HEAD)`"
-  sed -e "s/PACKAGES_FFGT_COMMIT=.*$/PACKAGES_FFGT_COMMIT=${PKGLIVECOMMIT}/" -i site-ffgt/modules
   /bin/rm -rf ffgt_packages-v2020.1
 else
   echo
@@ -95,6 +94,10 @@ cat /dev/null >/tmp/build-${RELEASE}.log
 # Enter site directory to prepare the build (download & patch Gluon)
 
 cd site-ffgt
+
+# Patch PACKAGES_FFGT_COMMIT
+
+sed -e "s/PACKAGES_FFGT_COMMIT=.*$/PACKAGES_FFGT_COMMIT=${PKGLIVECOMMIT}/" -i modules
 
 # Temporary files (logs) created during Docker runs
 
